@@ -22,12 +22,14 @@ pipeline {
         stage('Patch Ubuntu') {
             steps {
                 withCredentials([string(credentialsId: 'vault-token', variable: 'VAULT_TOKEN')]) {
-                    sh '''
-                        export UYUNI_HOST=$(vault kv get -field=uyuni_server secret/uyuni/dev)
-                        export UYUNI_USER=$(vault kv get -field=uyuni_user secret/uyuni/dev)
-                        export UYUNI_PASSWORD=$(vault kv get -field=uyuni_password secret/uyuni/dev)
-                        ansible-playbook -i uyuni.yml patch_management.yml
-                    '''
+                    sshagent(credentials: ['ansible-ssh']) {
+                        sh '''
+                            export UYUNI_HOST=$(vault kv get -field=uyuni_server secret/uyuni/dev)
+                            export UYUNI_USER=$(vault kv get -field=uyuni_user secret/uyuni/dev)
+                            export UYUNI_PASSWORD=$(vault kv get -field=uyuni_password secret/uyuni/dev)
+                            ansible-playbook -i uyuni.yml patch_management.yml
+                        '''
+                    }
                 }
             }
         }
