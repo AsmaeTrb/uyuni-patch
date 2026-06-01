@@ -13,6 +13,14 @@ pipeline {
             }
         }
 
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    ansible-galaxy collection install stdevel.uyuni
+                '''
+            }
+        }
+
         stage('Patch Ubuntu') {
             steps {
                 withCredentials([string(credentialsId: 'vault-token', variable: 'VAULT_TOKEN')]) {
