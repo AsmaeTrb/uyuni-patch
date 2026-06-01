@@ -1,0 +1,58 @@
+---
+- name: "Récupération des secrets Vault"
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    vault_env: "dev"
+
+  tasks:
+    - name: "VAULT | Récupération des secrets Uyuni"
+      set_fact:
+        vault_secrets: "{{ lookup('community.hashi_vault.hashi_vault',
+                           'secret/data/uyuni/' + vault_env,
+                           url=lookup('env', 'VAULT_ADDR'),
+                           token=lookup('env', 'VAULT_TOKEN')) }}"
+      no_log: true
+
+    - name: "VAULT | Extraction des variables"
+      set_fact:
+        uyuni_host:     "{{ vault_secrets.uyuni_server }}"
+        uyuni_user:     "{{ vault_secrets.uyuni_user }}"
+        uyuni_password: "{{ vault_secrets.uyuni_password }}"
+      no_log: true
+
+    - name: "VAULT | Confirmation"
+      debug:
+        msg: "Secrets récupérés pour {{ uyuni_user }} sur {{ uyuni_host }}"
+
+- name: "Patch management Uyuni"
+  hosts: ubuntu
+  gather_facts: false
+
+  tasks:
+    - name: "Installer les patches"
+      stdevel.uyuni.install_patches:
+        uyuni_host:     "{{ hostvars['localhost']['uyuni_host'] }}"
+        uyuni_user:     "{{ hostvars['localhost']['uyuni_user'] }}"
+        uyuni_password: "{{ hostvars['localhost']['uyuni_password'] }}"
+        name: "{{ inventory_hostname }}"
+        uyuni_verify_ssl: false
+
+    - name: "Vérifier si redémarrage nécessaire"
+      stdevel.uyuni.is_reboot_required:
+        uyuni_host:     "{{ hostvars['localhost']['uyuni_host'] }}"
+        uyuni_user:     "{{ hostvars['localhost']['uyuni_user'] }}"
+        uyuni_password: "{{ hostvars['localhost']['uyuni_password'] }}"
+        name: "{{ inventory_hostname }}"
+        uyuni_verify_ssl: false
+      register: reboot_check
+
+    - name: "Redémarrer si nécessaire"
+      stdevel.uyuni.reboot_host:
+        uyuni_host:     "{{ hostvars['localhost']['uyuni_host'] }}"
+        uyuni_user:     "{{ hostvars['localhost']['uyuni_user'] }}"
+        uyuni_password: "{{ hostvars['localhost']['uyuni_password'] }}"
+        name: "{{ inventory_hostname }}"
+        uyuni_verify_ssl: false
+      when: reboot_check.reboot_required | default(false) == true

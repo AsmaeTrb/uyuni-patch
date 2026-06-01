@@ -1,0 +1,4 @@
+plugin: stdevel.uyuni.inventory
+verify_ssl: false
+groups:
+  - ubuntu
